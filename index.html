@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Catálogo de mi tienda</title>
+<link rel="stylesheet" href="style.css" />
+
+<!-- Firebase: es la base de datos y el sistema de login de tu catálogo.
+     Es la única librería externa necesaria; no se puede reemplazar por CSS. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+  // ====================================================================
+  // CONFIGURACIÓN DE FIREBASE
+  // Reemplazá estos valores con los de TU propio proyecto:
+  // Consola de Firebase > ⚙️ Configuración del proyecto > Tus apps > Config del SDK
+  // Esto NO es secreto, es seguro subirlo a GitHub. La protección real
+  // la dan las reglas de Firestore (archivo firestore.rules).
+  // ====================================================================
+  const firebaseConfig = {
+    apiKey: "TU_API_KEY",
+    authDomain: "TU_PROYECTO.firebaseapp.com",
+    projectId: "TU_PROYECTO",
+    storageBucket: "TU_PROYECTO.appspot.com",
+    messagingSenderId: "TU_SENDER_ID",
+    appId: "TU_APP_ID",
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+</script>
+
+<script src="app.js"></script>
+</body>
+</html>
