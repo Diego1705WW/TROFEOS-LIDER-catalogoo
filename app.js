@@ -269,9 +269,15 @@ async function handleTestimonialImg(file) {
 
 async function handleLogoFile(file) {
   if (!file) return;
+
   tempLogoUrl = await compressImage(file, 500, 0.85, "image/png");
+
   const img = document.getElementById("logo-preview");
-  if (img) { img.src = tempLogoUrl; img.style.display = "block"; }
+  if (img) {
+    img.src = tempLogoUrl;
+    img.style.display = "block";
+  }
+
   const label = document.getElementById("logo-upload-label-text");
   if (label) label.textContent = "Cambiar foto";
 }
