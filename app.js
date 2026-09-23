@@ -6,7 +6,7 @@
 
 // ---------------------------- Estado ----------------------------
 let state = {
-  settings: { logoUrl: "", storeName: "Mi Tienda", social: { facebook: "", instagram: "", whatsapp: "", extra: [] } },
+  settings: { logoUrl: "", storeName: "Mi Tienda", pricesVisible: true, social: { facebook: "", instagram: "", whatsapp: "", extra: [] } },
   products: [],
   testimonials: [],
   loading: true,
@@ -95,9 +95,8 @@ function initFirebase() {
   });
 
   db.doc("settings/main").onSnapshot((snap) => {
-    state.settings = snap.exists
-      ? Object.assign({ logoUrl: "", storeName: "Mi Tienda", social: { facebook: "", instagram: "", whatsapp: "", extra: [] } }, snap.data())
-      : { logoUrl: "", storeName: "Mi Tienda", social: { facebook: "", instagram: "", whatsapp: "", extra: [] } };
+    const defaults = { logoUrl: "", storeName: "Mi Tienda", pricesVisible: true, social: { facebook: "", instagram: "", whatsapp: "", extra: [] } };
+    state.settings = snap.exists ? Object.assign({}, defaults, snap.data()) : defaults;
     state.loading = false;
     render();
   }, (err) => { console.error(err); state.loading = false; render(); });
@@ -114,24 +113,54 @@ function initFirebase() {
 }
 
 // ---------------------------- Acciones de Firestore ----------------------------
+function showSaveError(err) {
+  console.error(err);
+  alert("No se pudo guardar el cambio. Revisá tu conexión a internet y que las reglas de Firestore estén publicadas en Firebase. Detalle: " + (err && err.message ? err.message : err));
+}
+
 async function saveSettings(next) {
-  state.settings = next;
-  await db.doc("settings/main").set(next, { merge: true });
+  try {
+    await db.doc("settings/main").set(next, { merge: true });
+    // El listener de onSnapshot actualiza state.settings y vuelve a
+    // dibujar la página automáticamente una vez que el guardado es real.
+  } catch (err) {
+    showSaveError(err);
+  }
 }
 async function addProduct(p) {
-  await db.collection("products").add(Object.assign({}, p, { soldOut: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+  try {
+    await db.collection("products").add(Object.assign({}, p, { soldOut: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+  } catch (err) {
+    showSaveError(err);
+  }
 }
 async function toggleAgotado(id, current) {
-  await db.collection("products").doc(id).update({ soldOut: !current });
+  try {
+    await db.collection("products").doc(id).update({ soldOut: !current });
+  } catch (err) {
+    showSaveError(err);
+  }
 }
 async function deleteProductDoc(id) {
-  await db.collection("products").doc(id).delete();
+  try {
+    await db.collection("products").doc(id).delete();
+  } catch (err) {
+    showSaveError(err);
+  }
 }
 async function addTestimonialDoc(t) {
-  await db.collection("testimonials").add(Object.assign({}, t, { createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+  try {
+    await db.collection("testimonials").add(Object.assign({}, t, { createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+  } catch (err) {
+    showSaveError(err);
+  }
 }
 async function deleteTestimonialDoc(id) {
-  await db.collection("testimonials").doc(id).delete();
+  try {
+    await db.collection("testimonials").doc(id).delete();
+  } catch (err) {
+    showSaveError(err);
+  }
 }
 
 // ---------------------------- Navegación / UI ----------------------------
@@ -274,6 +303,10 @@ function saveBasicsSettings() {
   }));
 }
 
+function togglePricesVisible(checked) {
+  saveSettings(Object.assign({}, state.settings, { pricesVisible: checked }));
+}
+
 function submitAddSocial() {
   const name = document.getElementById("social-name").value.trim();
   const url = document.getElementById("social-url").value.trim();
@@ -390,7 +423,9 @@ function renderProductsTab(admin) {
         '</div>' +
         '<div class="product-info">' +
           '<div class="product-name">' + esc(p.name) + '</div>' +
-          (p.price ? '<div class="product-price">' + esc(p.price) + '</div>' : '') +
+          (state.settings.pricesVisible
+            ? (p.price ? '<div class="product-price">' + esc(p.price) + '</div>' : '')
+            : '<div class="product-price">Consultar precio</div>') +
         '</div>' +
       '</button>' +
       (admin ?
@@ -464,7 +499,9 @@ function renderProductModal() {
         thumbs +
         '<div class="modal-name serif">' + esc(p.name) + '</div>' +
         (p.soldOut ? '<div class="modal-sold">Agotado</div>' : '') +
-        (p.price ? '<div class="modal-price">' + esc(p.price) + '</div>' : '') +
+        (state.settings.pricesVisible
+          ? (p.price ? '<div class="modal-price">' + esc(p.price) + '</div>' : '')
+          : '<div class="modal-price" style="font-size:14px">Preguntá el precio por teléfono</div>') +
         '<div class="modal-desc">' + esc(p.description) + '</div>' +
         (p.phone ? '<div class="modal-phone">' + ICONS.phone(16) + ' ' + esc(p.phone) + '</div>' : '') +
       '</div>' +
@@ -551,6 +588,14 @@ function renderAdminExtras() {
     '<div class="admin-extras">' +
       '<div class="section-title serif">Ajustes generales</div>' +
       '<div class="form-card" style="margin-bottom:24px">' +
+        '<div class="toggle-row">' +
+          '<span class="field-label" style="margin-top:0">Mostrar precios a los clientes</span>' +
+          '<label class="switch">' +
+            '<input type="checkbox" ' + (s.pricesVisible ? 'checked' : '') + ' onchange="togglePricesVisible(this.checked)">' +
+            '<span class="switch-slider"></span>' +
+          '</label>' +
+        '</div>' +
+        '<div class="field-hint">Si lo apagás, en vez del precio los clientes van a ver "Consultar precio" y se les invita a preguntar por teléfono.</div>' +
         '<input type="text" id="set-storename" placeholder="Nombre de la tienda" value="' + esc(s.storeName) + '">' +
         '<div class="field-label">Logo de la tienda</div>' +
         '<div class="upload-row">' +
@@ -586,4 +631,3 @@ function renderAdminExtras() {
 // ---------------------------- Arranque ----------------------------
 initFirebase();
 render();
-
