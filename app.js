@@ -61,48 +61,27 @@ function esc(str) {
 }
 
 // ---------------------------- Compresión de imágenes ----------------------------
-function compressImage(file, maxDim, quality, format) {
+function compressImage(file, maxDim, quality) {
   maxDim = maxDim || 900;
   quality = quality || 0.72;
-  format = format || "image/jpeg";
-
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-
     reader.onload = (e) => {
       const img = new Image();
-
       img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
+        let width = img.width, height = img.height;
         if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
+          if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+          else { width = Math.round((width * maxDim) / height); height = maxDim; }
         }
-
         const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-
-        // No ponemos ningún fondo para conservar la transparencia
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        resolve(canvas.toDataURL(format, quality));
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
       };
-
       img.onerror = reject;
       img.src = e.target.result;
     };
-
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
@@ -135,54 +114,24 @@ function initFirebase() {
 }
 
 // ---------------------------- Acciones de Firestore ----------------------------
-function showSaveError(err) {
-  console.error(err);
-  alert("No se pudo guardar el cambio. Revisá tu conexión a internet y que las reglas de Firestore estén publicadas en Firebase. Detalle: " + (err && err.message ? err.message : err));
-}
-
 async function saveSettings(next) {
-  try {
-    await db.doc("settings/main").set(next, { merge: true });
-    // El listener de onSnapshot actualiza state.settings y vuelve a
-    // dibujar la página automáticamente una vez que el guardado es real.
-  } catch (err) {
-    showSaveError(err);
-  }
+  state.settings = next;
+  await db.doc("settings/main").set(next, { merge: true });
 }
 async function addProduct(p) {
-  try {
-    await db.collection("products").add(Object.assign({}, p, { soldOut: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
-  } catch (err) {
-    showSaveError(err);
-  }
+  await db.collection("products").add(Object.assign({}, p, { soldOut: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
 }
 async function toggleAgotado(id, current) {
-  try {
-    await db.collection("products").doc(id).update({ soldOut: !current });
-  } catch (err) {
-    showSaveError(err);
-  }
+  await db.collection("products").doc(id).update({ soldOut: !current });
 }
 async function deleteProductDoc(id) {
-  try {
-    await db.collection("products").doc(id).delete();
-  } catch (err) {
-    showSaveError(err);
-  }
+  await db.collection("products").doc(id).delete();
 }
 async function addTestimonialDoc(t) {
-  try {
-    await db.collection("testimonials").add(Object.assign({}, t, { createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
-  } catch (err) {
-    showSaveError(err);
-  }
+  await db.collection("testimonials").add(Object.assign({}, t, { createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
 }
 async function deleteTestimonialDoc(id) {
-  try {
-    await db.collection("testimonials").doc(id).delete();
-  } catch (err) {
-    showSaveError(err);
-  }
+  await db.collection("testimonials").doc(id).delete();
 }
 
 // ---------------------------- Navegación / UI ----------------------------
@@ -269,15 +218,9 @@ async function handleTestimonialImg(file) {
 
 async function handleLogoFile(file) {
   if (!file) return;
-
-  tempLogoUrl = await compressImage(file, 500, 0.85, "image/png");
-
+  tempLogoUrl = await compressImage(file, 500, 0.85);
   const img = document.getElementById("logo-preview");
-  if (img) {
-    img.src = tempLogoUrl;
-    img.style.display = "block";
-  }
-
+  if (img) { img.src = tempLogoUrl; img.style.display = "block"; }
   const label = document.getElementById("logo-upload-label-text");
   if (label) label.textContent = "Cambiar foto";
 }
@@ -643,3 +586,4 @@ function renderAdminExtras() {
 // ---------------------------- Arranque ----------------------------
 initFirebase();
 render();
+
